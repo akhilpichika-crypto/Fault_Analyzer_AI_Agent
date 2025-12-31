@@ -1,0 +1,96 @@
+import os
+import pandas as pd
+import re
+from typing import TypedDict, List
+from langgraph.graph import StateGraph, END
+from langchain_groq import ChatGroq
+from langchain_core.messages import HumanMessage
+
+# --- 1. SETUP ---
+GROQ_KEY = "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" # Ensure your new key is here
+
+model = ChatGroq(
+    model="llama-3.3-70b-versatile", 
+    groq_api_key=GROQ_KEY,
+    temperature=0
+)
+
+class AgentState(TypedDict):
+    user_query: str
+    part_id: str
+    stock_count: int
+    report: str
+
+# --- 2. NODES ---
+
+def research_node(state: AgentState):
+    print("\n[Node: Researcher] Scanning Manual.txt...")
+    try:
+        with open("Manual.txt", "r") as f:
+            manual_text = f.read()
+    except FileNotFoundError:
+        return {"part_id": "NONE", "report": "Error: Manual.txt missing."}
+    
+    prompt = f"Manual: {manual_text}\nQuery: {state['user_query']}\nFind Part ID. Return ONLY the ID (e.g., P101) or 'NONE'."
+    
+    try:
+        response = model.invoke([HumanMessage(content=prompt)])
+        raw_text = response.content.strip().upper()
+        match = re.search(r'P\d+', raw_text)
+        cleaned_id = match.group(0) if match else "NONE"
+        print(f"--- Researcher found ID: {cleaned_id} ---")
+        return {"part_id": cleaned_id}
+    except Exception as e:
+        return {"part_id": "NONE", "report": "AI Connection Error."}
+
+def inventory_node(state: AgentState):
+    print(f"[Node: Warehouse] Checking stock for: {state['part_id']}")
+    try:
+        df = pd.read_csv("Inventory.csv")
+        df.columns = df.columns.str.strip()
+        part_row = df[df['part_id'].str.strip().str.upper() == state['part_id']]
+        
+        if not part_row.empty:
+            stock = int(part_row['stock_level'].values[0])
+            name = part_row['part_name'].values[0]
+            msg = f"SUCCESS: Found {name} ({state['part_id']}). Stock: {stock}."
+            return {"stock_count": stock, "report": msg}
+        return {"report": f"Part {state['part_id']} is not in Inventory."}
+    except Exception as e:
+        return {"report": f"CSV Error: {e}"}
+
+def clarification_node(state: AgentState):
+    print("[Node: Support] Handling unknown issue...")
+    return {"report": "I could not find this issue in the manual. It may be outside my maintenance scope."}
+
+# --- 3. ROUTER & GRAPH ---
+
+def router(state: AgentState):
+    return "use_support" if state["part_id"] == "NONE" else "use_warehouse"
+
+workflow = StateGraph(AgentState)
+workflow.add_node("researcher", research_node)
+workflow.add_node("warehouse", inventory_node)
+workflow.add_node("support", clarification_node)
+
+workflow.set_entry_point("researcher")
+workflow.add_conditional_edges("researcher", router, {"use_support": "support", "use_warehouse": "warehouse"})
+workflow.add_edge("warehouse", END)
+workflow.add_edge("support", END)
+
+maintenance_app = workflow.compile()
+
+# --- 4. CONTINUOUS EXECUTION LOOP ---
+if __name__ == "__main__":
+    print("--- MAINTENANCE AI SYSTEM STARTING ---")
+    print("(Type 'exit' or 'quit' to stop)")
+    
+    while True:
+        user_input = input("\nEnter machine fault: ")
+        if user_input.lower() in ['exit', 'quit']:
+            break
+            
+        final_output = maintenance_app.invoke({"user_query": user_input})
+        print("\n" + "="*50)
+        print("AGENT REPORT:", final_output.get('report'))
+        print("="*50)
