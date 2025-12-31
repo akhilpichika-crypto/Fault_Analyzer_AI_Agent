@@ -1,0 +1,5 @@
+part_id,part_name,stock_level,unit_price,lead_time_days
+P101,Hydraulic Seal,0,45.00,5
+P102,Ball Bearing 6204,15,12.50,2
+P103,Pressure Gauge,3,85.00,7
+P104,O-Ring Kit,20,5.00,1

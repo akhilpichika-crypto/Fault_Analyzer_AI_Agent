@@ -1,0 +1,13 @@
+MAINTENANCE GUIDELINES - MODEL-X HYDRAULIC SYSTEM
+
+1. LEAKAGE ISSUES:
+If fluid leakage is observed at the primary piston arm, the Hydraulic Seal (Part ID: P101) must be replaced immediately.
+
+2. VIBRATION/NOISE:
+Excessive grinding noise in the rotating assembly usually indicates a failure of the Ball Bearing 6204 (Part ID: P102).
+
+3. PRESSURE DROPS:
+If the system cannot maintain operating pressure, inspect the Pressure Gauge (Part ID: P103). If the needle is stuck, replace the unit.
+
+4. ROUTINE SERVICE:
+Every 500 hours of operation, replace the O-Ring Kit (Part ID: P104) to prevent micro-fissures.
